@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Python Journey Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#f2f5f7;--surface:#fff;--ink:#14213d;--muted:#5b667a;--line:#d9e0e8;--accent:#0f6b6b;--accent-ink:#fff;--hot:#e0a100;--done:#0f6b6b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1424;--surface:#161e33;--ink:#eef1f7;--muted:#9aa5bd;--line:#26314d;--accent:#3cc0b8;--accent-ink:#06201f;--hot:#f2b928;--done:#3cc0b8}}
+:root[data-theme="dark"]{--bg:#0e1424;--surface:#161e33;--ink:#eef1f7;--muted:#9aa5bd;--line:#26314d;--accent:#3cc0b8;--accent-ink:#06201f;--hot:#f2b928;--done:#3cc0b8}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;font-weight:800;margin:0 0 16px;letter-spacing:-.01em}
+h2{font-size:1.05rem;font-weight:800;margin:0}
+.next{background:var(--ink);color:var(--bg);border-radius:14px;padding:22px 20px;margin-bottom:16px}
+.next small{opacity:.75;display:block}
+.count{font-size:clamp(2.4rem,11vw,3.6rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:6px 0;font-variant-numeric:tabular-nums}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;min-height:44px}
+button.primary{background:var(--hot);border-color:var(--hot);color:#1a1300}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.6;cursor:default}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.stats{display:flex;gap:24px;margin:8px 0 12px}
+.stats b{font-size:1.5rem;display:block;line-height:1.1}
+.stats span{color:var(--muted);font-size:.85rem}
+.grid{display:grid;grid-template-columns:repeat(14,1fr);gap:4px}
+.cell{aspect-ratio:1;border-radius:4px;background:var(--line)}
+.cell.on{background:var(--done)}
+.cell.today{outline:2px solid var(--hot);outline-offset:1px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--done);width:0;transition:width .3s}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:600;min-height:32px;align-items:center}
+summary em{font-style:normal;color:var(--muted);font-weight:400;font-size:.85rem;white-space:nowrap}
+label.t{display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer}
+label.t input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+label.t.done span{color:var(--muted);text-decoration:line-through}
+.note{color:var(--muted);font-size:.85rem;margin:6px 0 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Python Journey</h1>
+
+<section class="next" aria-live="polite">
+  <small id="nextLabel">Next session</small>
+  <div class="count" id="count">--:--:--</div>
+  <small id="nextWhen"></small>
+  <div class="row">
+    <button class="primary" id="checkin">I showed up today</button>
+    <button id="notifBtn">Turn on reminders</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Consistency</h2>
+  <div class="stats">
+    <div><b id="streak">0</b><span>day streak</span></div>
+    <div><b id="week">0/7</b><span>this week</span></div>
+    <div><b id="total">0</b><span>total sessions</span></div>
+  </div>
+  <div class="grid" id="grid" aria-label="Last 28 days"></div>
+  <p class="note" id="sync">Checking sync...</p>
+  <p class="note">Weekdays 9:00-10:30 pm. Saturdays and Sundays from 11:00 am.</p>
+</section>
+
+<section class="panel">
+  <h2>The plan</h2>
+  <div class="bar"><i id="pbar"></i></div>
+  <p class="note" id="ptext"></p>
+  <div id="plan"></div>
+</section>
+</main>
+
+<script>
+var PLAN=[
+{m:"Month 1: Fundamentals",t:["Install Python 3.12, create venv, push python-journey to GitHub","Syntax, lists, dicts, sets, functions, loops","Files, JSON, CSV, exceptions, argparse","Project: CLI expense tracker","Project: folder organizer","Project: CSV cleaner on real data","Milestone: build a CLI tool with no lookups for basics"]},
+{m:"Month 2: Web and the news collector",t:["requests and JSON APIs","feedparser and BeautifulSoup","OOP basics and pytest","Project: RSS collector into SQLite with dedup","Project: post a draft to WordPress via REST API","Milestone: collector runs daily for a week"]},
+{m:"Month 3: Backend foundations",t:["SQL, SQLite, then Postgres","SQLAlchemy models","FastAPI routes","Secrets, logging, scheduling, retries","Project: story queue service with scoring","Milestone: API tested, logged, documented"]},
+{m:"Month 4: LLMs as a component",t:["Anthropic API basics and token costs","Structured JSON output","Project: writer step that cites 2-3 sources","Project: SEO brief generator","Milestone: 8 of 10 drafts need no factual fix"]},
+{m:"Month 5: Full pipeline and agent loop",t:["Image step: Unsplash/Pexels with license and alt text","SEO step: meta, slug, schema, internal links","Agent loop with tools (search, fetch, check-source)","Project: collect to WordPress draft to approval","Milestone: one click makes an approval-ready draft"]},
+{m:"Month 6: Production and money",t:["Deploy on VPS or free tier with Docker","Monitoring, alerts, cost cap per post","Search Console feedback loop","Pilot on Mola Zuri or Adlink","Package as a service for SME clients","Milestone: live, running, under budget"]}
+];
+var KEY="pyjourney.v1",S={days:{},tasks:{},notified:{}};
+try{var r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}pushCloud()}
+var docRef=null,pushing=false,dirty=false;
+function setStatus(t){var e=document.getElementById("sync");if(e)e.textContent=t}
+function pushCloud(){
+  if(!docRef)return;dirty=true;if(pushing)return;pushing=true;
+  (function go(){dirty=false;
+    docRef.set({days:S.days,tasks:S.tasks}).then(function(){setStatus("Synced to your account")},function(){setStatus("Cloud save failed. Kept on this device.")}).then(function(){if(dirty)go();else pushing=false})
+  })()
+}
+function mergeIn(a){if(!a)return;Object.keys(a.days||{}).forEach(function(k){S.days[k]=1});Object.keys(a.tasks||{}).forEach(function(k){S.tasks[k]=1})}
+function initCloud(){
+  if(!(window.claude&&window.claude.use)){setStatus("Saved on this device only");return}
+  Promise.all([claude.use("db"),claude.use("user")]).then(function(r){
+    var db=r[0],u=r[1];
+    if(!db||!u){setStatus("Saved on this device only. Open it inside Claude to sync.");return}
+    return u.id().then(function(id){
+      if(!id){setStatus("Saved on this device only. Sign in to Claude to sync.");return}
+      docRef=db.collection("data/users/"+id).doc("state");
+      return docRef.get().then(function(snap){
+        if(snap.exists)mergeIn(snap.data());
+        try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+        stats();renderPlan();pushCloud();
+        docRef.onSnapshot(function(sn){
+          if(pushing||!sn.exists)return;
+          var d=sn.data()||{},next={days:d.days||{},tasks:d.tasks||{}};
+          if(JSON.stringify(next.days)!==JSON.stringify(S.days)||JSON.stringify(next.tasks)!==JSON.stringify(S.tasks)){
+            S.days=next.days;S.tasks=next.tasks;
+            try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+            stats();renderPlan()}
+        },function(){setStatus("Live sync stopped. Reload to reconnect.")});
+      });
+    });
+  }).catch(function(){setStatus("Saved on this device only")});
+}
+function pad(n){return n<10?"0"+n:""+n}
+function ds(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+// session start for a given date (local time)
+function startOf(d){var x=new Date(d),g=x.getDay();x.setHours((g==0||g==6)?11:21,0,0,0);return x}
+function endOf(d){var x=startOf(d),g=x.getDay();return new Date(x.getTime()+((g==0||g==6)?3:1.5)*3600000)}
+function nextSession(now){
+  for(var i=0;i<8;i++){var d=new Date(now);d.setDate(d.getDate()+i);
+    if(endOf(d)>now)return {s:startOf(d),e:endOf(d)}}
+}
+function fmt(ms){var s=Math.max(0,Math.floor(ms/1000));return pad(Math.floor(s/3600))+":"+pad(Math.floor(s%3600/60))+":"+pad(s%60)}
+function tick(){
+  var now=new Date(),n=nextSession(now),live=now>=n.s;
+  document.getElementById("nextLabel").textContent=live?"Class is on. Time left":"Next session in";
+  document.getElementById("count").textContent=fmt(live?n.e-now:n.s-now);
+  document.getElementById("nextWhen").textContent=n.s.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})+", "+n.s.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+" to "+n.e.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+  // in-page reminders (only fire while this page is open)
+  var lead=n.s-now,k=ds(n.s);
+  if(lead<=600000&&lead>0&&!S.notified[k+"a"]){ping("Class in 10 minutes","Get your laptop and venv ready.");S.notified[k+"a"]=1;save()}
+  if(live&&!S.notified[k+"b"]){ping("Class time","Open python-journey and start.");S.notified[k+"b"]=1;save()}
+}
+function ping(t,b){
+  try{if("Notification" in window&&Notification.permission==="granted")new Notification(t,{body:b})}catch(e){}
+}
+function stats(){
+  var t=new Date(),c=0,i,d;
+  var today=ds(t);
+  for(i=S.days[today]?0:1;;i++){d=new Date(t);d.setDate(d.getDate()-i);if(S.days[ds(d)])c++;else break}
+  var w=0,mon=new Date(t);mon.setDate(t.getDate()-((t.getDay()+6)%7));
+  for(i=0;i<7;i++){d=new Date(mon);d.setDate(mon.getDate()+i);if(S.days[ds(d)])w++}
+  document.getElementById("streak").textContent=c;
+  document.getElementById("week").textContent=w+"/7";
+  document.getElementById("total").textContent=Object.keys(S.days).length;
+  var g=document.getElementById("grid");g.innerHTML="";
+  for(i=27;i>=0;i--){d=new Date(t);d.setDate(t.getDate()-i);var el=document.createElement("div");
+    el.className="cell"+(S.days[ds(d)]?" on":"")+(i==0?" today":"");el.title=ds(d);g.appendChild(el)}
+  var b=document.getElementById("checkin");b.disabled=!!S.days[today];b.textContent=S.days[today]?"Checked in today":"I showed up today";
+}
+function renderPlan(){
+  var host=document.getElementById("plan"),tot=0,done=0;host.innerHTML="";
+  PLAN.forEach(function(m,mi){
+    var d=document.createElement("details"),c=0;
+    m.t.forEach(function(_,ti){if(S.tasks[mi+"-"+ti])c++});
+    tot+=m.t.length;done+=c;
+    d.open=(c<m.t.length&&(mi==0||PLAN[mi-1].t.every(function(_,ti){return S.tasks[(mi-1)+"-"+ti]})));
+    var s=document.createElement("summary");s.innerHTML="<span></span><em>"+c+"/"+m.t.length+"</em>";s.firstChild.textContent=m.m;d.appendChild(s);
+    m.t.forEach(function(txt,ti){
+      var id=mi+"-"+ti,l=document.createElement("label");l.className="t"+(S.tasks[id]?" done":"");
+      var i=document.createElement("input");i.type="checkbox";i.checked=!!S.tasks[id];
+      i.onchange=function(){if(i.checked)S.tasks[id]=1;else delete S.tasks[id];save();renderPlan()};
+      var sp=document.createElement("span");sp.textContent=txt;l.appendChild(i);l.appendChild(sp);d.appendChild(l)});
+    host.appendChild(d)});
+  document.getElementById("pbar").style.width=(tot?done/tot*100:0)+"%";
+  document.getElementById("ptext").textContent=done+" of "+tot+" tasks done";
+}
+document.getElementById("checkin").onclick=function(){S.days[ds(new Date())]=1;save();stats()};
+document.getElementById("notifBtn").onclick=function(){
+  if(!("Notification" in window)){this.textContent="Not supported here";return}
+  Notification.requestPermission().then(function(p){document.getElementById("notifBtn").textContent=p==="granted"?"Reminders on (page open)":"Reminders blocked"})
+};
+stats();renderPlan();tick();setInterval(tick,1000);initCloud();
+</script>
+</body>
+</html>
